@@ -1,0 +1,8 @@
+x-aws-vpc: "vpc-018a4c08c107d4f6c"
+services:
+  web:
+    image: durga2801/aws-eks-image:0.0.7
+    build:
+      context: .
+    ports:
+      - "8080:8080"
