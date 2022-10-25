@@ -9,7 +9,7 @@ public class EksController {
 	
 	@GetMapping("/welcome")
 	public String welcome() {
-		return "Welcome to EKS Test, Docker version 0.0.5";
+		return "Welcome to EKS Test, Docker version 0.0.9";
 	}
 
 }
