@@ -1,0 +1,77 @@
+pipeline {
+    agent any
+
+    tools {
+        // Install the Maven version configured as "M3" and add it to the path.
+        maven "Jenkins-M"
+    }
+
+    stages {
+        
+        stage('Build') {
+            steps {
+                // Get some code from a GitHub repository
+                git 'https://github.com/durga2801/aws-eks-image.git'
+               
+
+                // Run Maven on a Unix agent.
+                //sh "mvn -Dmaven.test.failure.ignore=true clean install package"
+
+                // To run Maven on a Windows agent, use
+                 bat "mvn -Dmaven.test.failure.ignore=true clean package"
+            }
+            
+
+            post {
+                // If Maven was able to run the tests, even if some of the test
+                // failed, record the test results and archive the jar file.
+                success {
+                    junit '**/target/surefire-reports/TEST-*.xml'
+                    archiveArtifacts 'target/*.jar'
+                    echo 'Build End'
+                }
+            }
+        }
+        
+        
+        stage('Build Docker image') {
+            environment {
+                //Use Pipeline Utility Steps plugin to read information from pom.xml into env variables
+                IMAGE = readMavenPom().getArtifactId()
+                VERSION = readMavenPom().getVersion()
+               
+                DOCKER_HUB_LOGIN = credentials('docker-hub')
+            }
+            steps {
+                echo 'Build Start'
+                sh 'docker context use default'
+                bat 'docker login --username='+DOCKER_HUB_LOGIN_USR+' --password='+DOCKER_HUB_LOGIN_PSW
+                bat 'docker build -t durga2801/aws-eks-image:'+VERSION+' .'
+                
+            }
+        }
+        
+        stage('Push Docker image') {
+            environment {
+                DOCKER_HUB_LOGIN = credentials('docker-hub')
+                VERSION = readMavenPom().getVersion()
+            }
+            steps {
+                echo "Credential $DOCKER_HUB_LOGIN_PSW"
+               
+                bat 'docker login --username='+DOCKER_HUB_LOGIN_USR+' --password='+DOCKER_HUB_LOGIN_PSW
+                bat 'docker push durga2801/aws-eks-image:'+VERSION
+            }
+        }
+        stage('Deploy ECS') {
+           
+            steps {
+               // sh 'docker context create ecs myecscontext --from-env'
+                sh 'docker context use myecscontext'
+                sh 'docker compose up'
+                sh 'docker compose ps'
+            }
+        }
+        
+    }
+}
